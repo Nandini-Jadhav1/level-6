@@ -20,15 +20,20 @@ const INITIAL_STATE: WalletState = {
   isWalletInstalled: false,
 };
 
+// The Midnight Preprod network ID string expected by the DApp Connector API.
+// Matches the official @midnight-ntwrk/dapp-connector-api specification.
+const NETWORK_ID = 'preprod';
+
 export function useMidnight() {
   const [walletState, setWalletState] = useState<WalletState>(INITIAL_STATE);
 
   // Detect whether window.midnight['1am'] (1AM DApp connector) is present.
+  // Browser-confirmed: the injected object exposes .connect, not .enable.
   // Called on mount and on window focus — NEVER sets isConnected.
   const checkWalletInstalled = useCallback((): boolean => {
     if (typeof window === 'undefined') return false;
     const m = (window as any).midnight;
-    return !!(m && m['1am'] && typeof m['1am'].enable === 'function');
+    return !!(m && m['1am'] && typeof m['1am'].connect === 'function');
   }, []);
 
   useEffect(() => {
@@ -72,30 +77,100 @@ export function useMidnight() {
         return;
       }
 
-      // --- Step 1: Get the DApp Connector API by calling .enable() ---
-      // This is the call that triggers the 1AM approval popup.
-      let api: any = null;
-
-      if (typeof midnight['1am'].enable === 'function') {
-        api = await midnight['1am'].enable();
+      if (typeof midnight['1am'].connect !== 'function') {
+        throw new Error(
+          '1AM Wallet extension found but does not expose a connect() method. Please update the extension.'
+        );
       }
 
-      // If enable() returned nothing, the user rejected or extension is broken.
+      // --- Step 1: Call connect(networkId) to get the ConnectedAPI ---
+      // Per the official DApp Connector API spec:
+      //   InitialAPI.connect(networkId: string) => Promise<ConnectedAPI>
+      // This triggers the 1AM approval popup when not yet approved.
+      // On subsequent calls (page refresh, already approved), it resolves
+      // immediately without a popup.
+      let api: any;
+      try {
+        api = await midnight['1am'].connect(NETWORK_ID);
+      } catch (e: any) {
+        // Detect user rejection via the DApp Connector error shape.
+        // APIError uses { type: 'DAppConnectorAPIError', code, reason }
+        // rather than extending Error, so we check type explicitly.
+        const isDappError =
+          e && typeof e === 'object' && e.type === 'DAppConnectorAPIError';
+        const isRejected =
+          isDappError
+            ? e.code === 'Rejected' || e.code === 4001
+            : e?.code === 4001 ||
+              e?.message?.toLowerCase().includes('rejected') ||
+              e?.message?.toLowerCase().includes('user denied') ||
+              e?.message?.toLowerCase().includes('cancelled');
+
+        setWalletState({
+          ...INITIAL_STATE,
+          isWalletInstalled: checkWalletInstalled(),
+          error: isRejected
+            ? 'Connection rejected in 1AM Wallet. Click "Connect 1AM Wallet" to try again.'
+            : isDappError
+            ? `1AM Wallet error: ${e.reason ?? e.code ?? 'Unknown error'}`
+            : e?.message ?? 'Failed to connect to 1AM Wallet.',
+        });
+        return;
+      }
+
+      // If connect() returned nothing at all, the extension is broken.
       if (!api) {
         throw new Error(
           '1AM did not return a connector API. The request may have been rejected or the extension is not properly configured.'
         );
       }
 
-      // --- Step 2: Query the real address AFTER enable() resolves ---
-      const state =
-        typeof api.state === 'function' ? await api.state() : null;
+      // --- Step 2: Obtain the wallet address from the ConnectedAPI ---
+      // Per the DApp Connector API spec, ConnectedAPI exposes:
+      //   getShieldedAddresses()  => { shieldedAddress: string }   (Bech32m)
+      //   getUnshieldedAddress()  => { unshieldedAddress: string } (Bech32m)
+      //   getConfiguration()     => { networkId, indexerUri, ... }
+      // There is no api.state() method — that does not exist on ConnectedAPI.
+      let connectedAddress: string | null = null;
+      let resolvedNetwork: string = NETWORK_ID;
 
-      const connectedAddress: string | null =
-        state?.address ?? state?.bech32Address ?? null;
+      // Prefer the shielded address (primary identity on Midnight).
+      // Fall back to unshielded address if shielded is unavailable.
+      if (typeof api.getShieldedAddresses === 'function') {
+        try {
+          const shielded = await api.getShieldedAddresses();
+          connectedAddress = shielded?.shieldedAddress ?? null;
+        } catch {
+          // getShieldedAddresses failed — will try unshielded next
+        }
+      }
 
-      // If enable() succeeded but no address came back, the account is not set up.
-      if (!connectedAddress || typeof connectedAddress !== 'string' || connectedAddress.trim() === '') {
+      if (!connectedAddress && typeof api.getUnshieldedAddress === 'function') {
+        try {
+          const unshielded = await api.getUnshieldedAddress();
+          connectedAddress = unshielded?.unshieldedAddress ?? null;
+        } catch {
+          // getUnshieldedAddress also failed — address will remain null
+        }
+      }
+
+      // Pull the canonical networkId from the wallet's own configuration.
+      if (typeof api.getConfiguration === 'function') {
+        try {
+          const config = await api.getConfiguration();
+          if (config?.networkId) resolvedNetwork = config.networkId;
+        } catch {
+          // Non-fatal — fall back to the constant we passed in
+        }
+      }
+
+      // If we still have no address after all methods, the wallet account
+      // is not set up or not synced with the selected network.
+      if (
+        !connectedAddress ||
+        typeof connectedAddress !== 'string' ||
+        connectedAddress.trim() === ''
+      ) {
         throw new Error(
           '1AM connected but returned no wallet address. Please ensure an account is selected and the extension is synced with Midnight Preprod.'
         );
@@ -106,7 +181,7 @@ export function useMidnight() {
         isConnected: true,
         isConnecting: false,
         address: connectedAddress,
-        network: state?.network ?? 'Preprod',
+        network: resolvedNetwork,
         error: null,
         isWalletInstalled: true,
       });
@@ -115,7 +190,6 @@ export function useMidnight() {
     } catch (err: any) {
       console.error('[useMidnight] Connection failed:', err);
 
-      // Distinguish user-rejection from real errors
       const isRejected =
         err?.code === 4001 ||
         err?.message?.toLowerCase().includes('rejected') ||

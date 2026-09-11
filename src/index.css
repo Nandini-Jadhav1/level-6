@@ -2,18 +2,19 @@
 
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --color-slate-950: #060913;
   --color-slate-900: #0f172a;
 }
 
 :root {
-  --bg-dark: #060913;
-  --card-bg: rgba(15, 23, 42, 0.75);
-  --border-glow: rgba(99, 102, 241, 0.25);
+  --bg-dark: #07091a;
+  --card-bg: rgba(13, 18, 38, 0.80);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-accent: rgba(99, 102, 241, 0.25);
   --accent-indigo: #6366f1;
-  --accent-cyan: #06b6d4;
   --accent-purple: #a855f7;
+  --accent-cyan: #06b6d4;
 }
 
 * {
@@ -24,60 +25,132 @@
 
 body {
   background-color: var(--bg-dark);
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.18) 0px, transparent 50%),
-    radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.1) 0px, transparent 50%);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 10% 5%,  rgba(99, 102, 241, 0.10) 0px, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 95%, rgba(168, 85, 247, 0.10) 0px, transparent 60%);
   background-attachment: fixed;
-  color: #f8fafc;
+  color: #e8edf5;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
 }
 
-.glass-panel {
+/* ── Card ──────────────────────────────────────────── */
+.card {
   background: var(--card-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 32px 0 rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: 0 2px 20px 0 rgba(0, 0, 0, 0.30);
 }
 
-.glass-panel-interactive {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+.card-hover {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
 }
 
-.glass-panel-interactive:hover {
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.2);
+.card-hover:hover {
+  border-color: rgba(99, 102, 241, 0.32);
+  box-shadow: 0 6px 28px 0 rgba(99, 102, 241, 0.13);
   transform: translateY(-2px);
 }
 
+/* Legacy alias — keep glass-panel working */
+.glass-panel {
+  background: var(--card-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 20px 0 rgba(0, 0, 0, 0.30);
+}
+
+.glass-panel-interactive {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
+}
+
+.glass-panel-interactive:hover {
+  border-color: rgba(99, 102, 241, 0.32);
+  box-shadow: 0 6px 28px 0 rgba(99, 102, 241, 0.13);
+  transform: translateY(-2px);
+}
+
+/* ── Gradient text ──────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #a5b4fc 0%, #c084fc 50%, #38bdf8 100%);
+  background: linear-gradient(125deg, #a5b4fc 0%, #c084fc 50%, #67e8f9 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
+/* ── Monospace ──────────────────────────────────────── */
 .font-mono {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ── Input base ─────────────────────────────────────── */
+.field-input {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 10px;
+  background: rgba(8, 12, 28, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e8edf5;
+  font-size: 0.875rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+.field-input::placeholder {
+  color: rgba(100, 116, 139, 0.55);
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.4);
-  border-radius: 3px;
+.field-input:focus {
+  border-color: rgba(99, 102, 241, 0.60);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.7);
+/* ── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar          { width: 5px; height: 5px; }
+::-webkit-scrollbar-track    { background: rgba(10, 14, 30, 0.5); }
+::-webkit-scrollbar-thumb    { background: rgba(99, 102, 241, 0.30); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.55); }
+
+/* ── Focus visible ──────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.65);
+  outline-offset: 2px;
+}
+
+/* ── Tab scrollbar hide ─────────────────────────────── */
+.tabs-scroll {
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.tabs-scroll::-webkit-scrollbar { display: none; }
+
+/* ── Centered app content wrapper ───────────────────
+   This plain CSS rule is the single source of truth
+   for centering ALL application content.
+   Applied to the .app-cx inner wrapper inside
+   header, main, and footer.
+   Tailwind classes on the same element are backup.
+──────────────────────────────────────────────────── */
+.app-cx {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 40px;
+  padding-right: 40px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .app-cx { padding-left: 24px; padding-right: 24px; }
+}
+
+@media (max-width: 640px) {
+  .app-cx { padding-left: 16px; padding-right: 16px; }
 }
