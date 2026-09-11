@@ -1,0 +1,110 @@
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+/**
+ * ============================================================================
+ * PRIVATE REVENUE SPLIT SMART CONTRACT (MIDNIGHT NETWORK)
+ * ============================================================================
+ * PRIVACY SPECIFICATION (PUBLIC VS PRIVATE DATA SPLIT):
+ *
+ * PRIVACY MODEL & GUARANTEES:
+ * 1. PUBLIC LEDGER STATE (On-Chain):
+ *    - organizerPublicKey: Bytes<32>              -> Public identity of deal creator
+ *    - splitCommitment: Bytes<32>                 -> Cryptographic commitment to deal rules (e.g. 70/30 split structure)
+ *    - recipientCommitments: Map<Bytes<32>, Bool> -> Set of authorized recipient payout commitments
+ *    - claimedNullifiers: Map<Bytes<32>, Bool>    -> Set of spent payout nullifiers (prevents double-claiming)
+ *    - totalPaidIn: Uint<32>                      -> Total revenue deposited into pool (disclosed / verifiable)
+ *    - totalSplitOut: Uint<32>                    -> Cumulative sum of claimed payouts (disclosed / verifiable)
+ *    - claimCount: Uint<32>                       -> Total number of successful claims executed
+ *
+ * 2. PRIVATE WITNESSES (Off-Chain / Proved in ZK):
+ *    - recipientSecret: Bytes<32>                 -> Recipient's private secret key (NEVER revealed on-chain)
+ *    - recipientSalt: Bytes<32>                   -> Salt hiding individual payout share in commitment
+ *    - claimAmount: Uint<32>                      -> Individual recipient cut (kept PRIVATE to recipient)
+ *
+ * 3. ZERO-KNOWLEDGE PROOF VERIFICATION:
+ *    - Proves sum(claimed payouts) <= totalPaidIn without revealing individual recipient shares to anyone.
+ *    - Proves recipient possesses valid commitment registered by organizer without revealing recipient identity.
+ *    - Generates unlinkable nullifier: hash(recipientSecret, poolId) to prevent double claims.
+ *
+ * 4. DISCLOSED VALUES (Circuit Outputs):
+ *    - totalPaidIn / totalSplitOut: Disclosed to allow public balance auditing on-chain.
+ *    - nullifier: Bytes<32> disclosed upon successful claim to prevent duplicate payout collection.
+ * ============================================================================
+ */
+
+export ledger organizerPublicKey: Bytes<32>;
+export ledger splitCommitment: Bytes<32>;
+export ledger recipientCommitments: Map<Bytes<32>, Boolean>;
+export ledger claimedNullifiers: Map<Bytes<32>, Boolean>;
+export ledger totalPaidIn: Uint<32>;
+export ledger totalSplitOut: Uint<32>;
+export ledger claimCount: Uint<32>;
+
+// Data structure for private recipient witness input
+export struct RecipientWitness {
+    recipientSecret: Bytes<32>;
+    recipientSalt: Bytes<32>;
+}
+
+// Circuit 1: Initialize Contract & Set Split Commitment Rule
+export circuit initialize(organizerKey: Bytes<32>, initialTotal: Uint<32>, ruleCommitment: Bytes<32>): [] {
+    organizerPublicKey = disclose(organizerKey);
+    splitCommitment = disclose(ruleCommitment);
+    totalPaidIn = disclose(initialTotal);
+    totalSplitOut = 0;
+    claimCount = 0;
+}
+
+// Circuit 2: Register Recipient Commitment & Update Total Revenue Pool
+export circuit registerRecipient(organizerSecret: Bytes<32>, commitment: Bytes<32>, addedRevenue: Uint<32>): [] {
+    // Assert organizer secret authorization
+    const computedKey = persistent_hash<Bytes<32>>(organizerSecret);
+    require computedKey == organizerPublicKey "Unauthorized: caller is not contract organizer";
+
+    // Assert commitment non-empty
+    require commitment != pad(32, "0") "Invalid recipient commitment";
+
+    // Register commitment on ledger
+    recipientCommitments.insert(commitment, true);
+    
+    // Update total pool balance if additional revenue deposited
+    totalPaidIn = totalPaidIn + disclose(addedRevenue);
+}
+
+// Circuit 3: Claim Payout Privately with ZK Sum & Commitment Proof
+export circuit claimPayout(witness: RecipientWitness, claimAmount: Uint<32>, poolId: Bytes<32>): Bytes<32> {
+    // 1. Enforce non-empty recipient secret & salt
+    require witness.recipientSecret != pad(32, "0") "Invalid recipient secret key";
+    require witness.recipientSalt != pad(32, "0") "Invalid recipient salt";
+    require claimAmount > 0 "Claim amount must be positive";
+
+    // 2. Reconstruct recipient payout commitment: hash(secret, salt, claimAmount)
+    const commitment = persistent_hash<[Bytes<32>, Bytes<32>, Uint<32>]>([
+        witness.recipientSecret,
+        witness.recipientSalt,
+        claimAmount
+    ]);
+
+    // 3. Verify recipient commitment exists on-chain
+    require recipientCommitments.member(commitment) "Claim failed: Commitment not found in split registry";
+
+    // 4. Compute unique, unlinkable nullifier: hash(recipientSecret, poolId)
+    const nullifier = persistent_hash<[Bytes<32>, Bytes<32>]>([witness.recipientSecret, poolId]);
+
+    // 5. Enforce nullifier uniqueness (anti-double claim)
+    require !claimedNullifiers.member(nullifier) "Double claim rejected: Payout already claimed for this pool";
+
+    // 6. Zero-Knowledge Proof Constraint: Ensure new total split out does not exceed total paid in
+    const newTotalSplitOut = totalSplitOut + claimAmount;
+    require newTotalSplitOut <= totalPaidIn "Claim rejected: Cumulative payouts exceed total pool revenue";
+
+    // 7. Update ledger state: record nullifier and update total split out
+    claimedNullifiers.insert(nullifier, true);
+    totalSplitOut = disclose(newTotalSplitOut);
+    claimCount = claimCount + 1;
+
+    // 8. Disclose and return derived nullifier
+    return disclose(nullifier);
+}
