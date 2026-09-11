@@ -23,12 +23,12 @@ const INITIAL_STATE: WalletState = {
 export function useMidnight() {
   const [walletState, setWalletState] = useState<WalletState>(INITIAL_STATE);
 
-  // Detect whether window.midnight (Lace DApp connector) is present.
+  // Detect whether window.midnight['1am'] (1AM DApp connector) is present.
   // Called on mount and on window focus — NEVER sets isConnected.
   const checkWalletInstalled = useCallback((): boolean => {
     if (typeof window === 'undefined') return false;
     const m = (window as any).midnight;
-    return !!(m && (m.mnLace || typeof m.enable === 'function'));
+    return !!(m && m['1am'] && typeof m['1am'].enable === 'function');
   }, []);
 
   useEffect(() => {
@@ -62,38 +62,28 @@ export function useMidnight() {
 
       const midnight = (window as any).midnight;
 
-      if (!midnight) {
+      if (!midnight || !midnight['1am']) {
         setWalletState({
           ...INITIAL_STATE,
           isWalletInstalled: false,
           error:
-            'Lace Wallet extension not detected. Please install the Lace browser extension and configure it for Midnight Preprod.',
+            '1AM Wallet extension not detected. Please install the 1AM browser extension and configure it for Midnight Preprod.',
         });
         return;
       }
 
       // --- Step 1: Get the DApp Connector API by calling .enable() ---
-      // This is the call that triggers the Lace approval popup.
+      // This is the call that triggers the 1AM approval popup.
       let api: any = null;
 
-      if (midnight.mnLace && typeof midnight.mnLace.enable === 'function') {
-        api = await midnight.mnLace.enable();
-      } else if (typeof midnight.enable === 'function') {
-        api = await midnight.enable();
-      } else {
-        // Walk the midnight object to find any provider with .enable()
-        const providers = Object.values(midnight).filter(
-          (p: any) => p && typeof p.enable === 'function'
-        );
-        if (providers.length > 0) {
-          api = await (providers[0] as any).enable();
-        }
+      if (typeof midnight['1am'].enable === 'function') {
+        api = await midnight['1am'].enable();
       }
 
       // If enable() returned nothing, the user rejected or extension is broken.
       if (!api) {
         throw new Error(
-          'Lace did not return a connector API. The request may have been rejected or the extension is not properly configured.'
+          '1AM did not return a connector API. The request may have been rejected or the extension is not properly configured.'
         );
       }
 
@@ -107,7 +97,7 @@ export function useMidnight() {
       // If enable() succeeded but no address came back, the account is not set up.
       if (!connectedAddress || typeof connectedAddress !== 'string' || connectedAddress.trim() === '') {
         throw new Error(
-          'Lace connected but returned no wallet address. Please ensure an account is selected and the extension is synced with Midnight Preprod.'
+          '1AM connected but returned no wallet address. Please ensure an account is selected and the extension is synced with Midnight Preprod.'
         );
       }
 
@@ -121,7 +111,7 @@ export function useMidnight() {
         isWalletInstalled: true,
       });
 
-      console.log('[useMidnight] Lace connected. Address:', connectedAddress);
+      console.log('[useMidnight] 1AM connected. Address:', connectedAddress);
     } catch (err: any) {
       console.error('[useMidnight] Connection failed:', err);
 
@@ -136,8 +126,8 @@ export function useMidnight() {
         ...INITIAL_STATE,
         isWalletInstalled: checkWalletInstalled(),
         error: isRejected
-          ? 'Connection rejected in Lace Wallet. Click "Connect Lace Wallet" to try again.'
-          : err?.message ?? 'Failed to connect to Lace Wallet.',
+          ? 'Connection rejected in 1AM Wallet. Click "Connect 1AM Wallet" to try again.'
+          : err?.message ?? 'Failed to connect to 1AM Wallet.',
       });
     }
   }, [walletState.isConnecting, checkWalletInstalled]);
@@ -154,6 +144,6 @@ export function useMidnight() {
     ...walletState,
     connect,
     disconnect,
-    installUrl: 'https://www.lace.io/',
+    installUrl: 'https://1am.xyz',
   };
 }

@@ -45,7 +45,7 @@ export const WalletConnect: React.FC = () => {
                 rel="noreferrer"
                 className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-medium transition-colors"
               >
-                <span>Get Lace Wallet</span>
+                <span>Get 1AM Wallet</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             )}
@@ -58,12 +58,12 @@ export const WalletConnect: React.FC = () => {
               {isConnecting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span>Awaiting Lace Approval...</span>
+                  <span>Awaiting 1AM Approval...</span>
                 </>
               ) : (
                 <>
                   <Wallet className="w-4 h-4" />
-                  <span>Connect Lace Wallet</span>
+                  <span>Connect 1AM Wallet</span>
                 </>
               )}
             </button>
@@ -83,7 +83,7 @@ export const WalletConnect: React.FC = () => {
               rel="noreferrer"
               className="underline text-indigo-300 hover:text-white font-medium ml-1 whitespace-nowrap"
             >
-              Install Lace
+              Install 1AM
             </a>
           )}
         </div>
