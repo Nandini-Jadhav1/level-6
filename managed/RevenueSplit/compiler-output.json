@@ -1,0 +1,36 @@
+{
+  "contractName": "RevenueSplit",
+  "version": "1.0.0",
+  "compilerVersion": "compactc-0.16.0",
+  "circuits": {
+    "initialize": {
+      "privateInputs": 0,
+      "publicState": [
+        "organizerPublicKey",
+        "splitCommitment",
+        "totalPaidIn"
+      ]
+    },
+    "registerRecipient": {
+      "privateInputs": 1,
+      "publicState": [
+        "recipientCommitments",
+        "totalPaidIn"
+      ]
+    },
+    "claimPayout": {
+      "privateInputs": 2,
+      "publicState": [
+        "recipientCommitments",
+        "claimedNullifiers",
+        "totalSplitOut"
+      ],
+      "output": "nullifier"
+    }
+  },
+  "artifacts": {
+    "wasm": "circuit.wasm",
+    "provingKey": "proving_key",
+    "verifyingKey": "verifying_key"
+  }
+}
