@@ -1,6 +1,6 @@
 # Private Revenue Split
 
-[![CI/CD](https://github.com/Nandini-Jadhav1/Private-revenue-split/actions/workflows/ci.yml/badge.svg)](https://github.com/Nandini-Jadhav1/Private-revenue-split/actions/workflows/ci.yml)
+[![CI/CD](https://github.com/Nandini-Jadhav1/revenue-split/actions/workflows/ci.yml/badge.svg)](https://github.com/Nandini-Jadhav1/revenue-split/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-green.svg)](https://nodejs.org/)
 [![Midnight Network](https://img.shields.io/badge/Midnight-Preprod-purple.svg)](https://midnight.network)
@@ -97,8 +97,8 @@ Designed for indie hackers, DAOs, freelance studios, and creative collaborators,
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/Nandini-Jadhav1/Private-revenue-split.git
-   cd Private-revenue-split
+   git clone https://github.com/Nandini-Jadhav1/revenue-split.git
+   cd revenue-split
    ```
 
 2. **Install Dependencies**:
@@ -142,7 +142,7 @@ On every push to `main`, GitHub Actions performs:
 | **3. Production Build** | `vite build` — verifies bundle compiles cleanly |
 | **4. Security Audit** | `npm audit --audit-level=high` — flags critical CVEs |
 
-[![CI/CD](https://github.com/Nandini-Jadhav1/Private-revenue-split/actions/workflows/ci.yml/badge.svg)](https://github.com/Nandini-Jadhav1/Private-revenue-split/actions/workflows/ci.yml)
+[![CI/CD](https://github.com/Nandini-Jadhav1/revenue-split/actions/workflows/ci.yml/badge.svg)](https://github.com/Nandini-Jadhav1/revenue-split/actions/workflows/ci.yml)
 
 ---
 
@@ -172,7 +172,7 @@ For a detailed step-by-step user manual, see [docs/USAGE.md](docs/USAGE.md).
 | Documentation (README + setup + usage) | ✅ This file + [docs/USAGE.md](docs/USAGE.md) |
 | CI/CD pipeline with passing runs | ✅ [GitHub Actions](.github/workflows/ci.yml) |
 | Product X profile linked | ✅ [https://x.com/PrivateRevSplit](https://x.com/PrivateRevSplit) |
-| Minimum 15 meaningful commits | ✅ See [commit history](https://github.com/Nandini-Jadhav1/Private-revenue-split/commits/main) |
+| Minimum 15 meaningful commits | ✅ See [commit history](https://github.com/Nandini-Jadhav1/revenue-split/commits/main) |
 | Demo video of MVP | ✅ [YouTube Demo](https://youtube.com/watch?v=demo_private_revenue_split) |
 | Public GitHub repository | ✅ This repository |
 
