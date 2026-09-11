@@ -1,0 +1,41 @@
+{
+  "name": "private-revenue-split",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Private Revenue Split — Confidential revenue distribution dApp built on Midnight Network using Compact ZK Smart Contracts",
+  "author": "Midnight Developer",
+  "license": "MIT",
+  "scripts": {
+    "compile": "npx tsx scripts/compile-contract.ts",
+    "build": "npm run compile && tsc && vite build",
+    "test": "npx vitest run",
+    "test:watch": "npx vitest",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.16.0",
+    "@midnight-ntwrk/midnight-js-contracts": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-types": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-utils": "^4.1.1",
+    "lucide-react": "^0.475.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.1",
+    "typescript": "^5.6.3",
+    "vite": "^6.2.0",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
