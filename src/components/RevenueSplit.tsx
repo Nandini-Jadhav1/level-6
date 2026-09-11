@@ -150,7 +150,7 @@ export const RevenueSplit: React.FC = () => {
       <div className="relative overflow-hidden p-6 sm:p-8 rounded-3xl glass-panel border border-indigo-500/30 bg-gradient-to-r from-indigo-950/60 via-slate-900/80 to-purple-950/50">
         <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div className="space-y-3 max-w-2xl">
+          <div className="space-y-3 flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> Midnight Compact Protocol
@@ -162,22 +162,22 @@ export const RevenueSplit: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               Confidential Revenue Distribution
             </h1>
-            <p className="text-sm text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-300 leading-relaxed max-w-3xl">
               Distribute revenue to partners, contractors, and investors with total confidentiality. Zero-knowledge proofs verify each recipient's share commitment without ever revealing individual payout amounts on the public ledger.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row lg:flex-col gap-2 min-w-[220px]">
-            <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs font-mono space-y-1">
-              <div className="text-slate-400 flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row lg:flex-col gap-2 w-full lg:w-auto shrink-0">
+            <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs font-mono space-y-1.5 min-w-[200px]">
+              <div className="text-slate-400 flex items-center justify-between gap-4">
                 <span>Contract State:</span>
                 <span className="text-emerald-400 font-semibold">Active</span>
               </div>
-              <div className="text-slate-400 flex items-center justify-between">
+              <div className="text-slate-400 flex items-center justify-between gap-4">
                 <span>Circuit Compiler:</span>
                 <span className="text-indigo-300">Compact v0.16</span>
               </div>
-              <div className="text-slate-400 flex items-center justify-between">
+              <div className="text-slate-400 flex items-center justify-between gap-4">
                 <span>Verification:</span>
                 <span className="text-purple-300">Off-Chain Witness</span>
               </div>
@@ -205,7 +205,7 @@ export const RevenueSplit: React.FC = () => {
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
               PUBLIC BAL
             </span>
-            <span className="text-[11px] text-slate-400 truncate">On-Chain Pool</span>
+            <span className="text-[11px] text-slate-400 whitespace-nowrap">On-Chain Pool</span>
           </div>
         </div>
 
@@ -226,7 +226,7 @@ export const RevenueSplit: React.FC = () => {
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
               ZK VERIFIED
             </span>
-            <span className="text-[11px] text-slate-400 truncate">Claimed Pool</span>
+            <span className="text-[11px] text-slate-400 whitespace-nowrap">Claimed Pool</span>
           </div>
         </div>
 
@@ -247,7 +247,7 @@ export const RevenueSplit: React.FC = () => {
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 whitespace-nowrap">
               COMMITTED
             </span>
-            <span className="text-[11px] text-slate-400 truncate">Cuts Concealed</span>
+            <span className="text-[11px] text-slate-400 whitespace-nowrap">Cuts Concealed</span>
           </div>
         </div>
 
@@ -268,7 +268,7 @@ export const RevenueSplit: React.FC = () => {
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20 whitespace-nowrap">
               NO DOUBLE CLAIM
             </span>
-            <span className="text-[11px] text-slate-400 truncate">Spent Set</span>
+            <span className="text-[11px] text-slate-400 whitespace-nowrap">Spent Set</span>
           </div>
         </div>
       </div>
