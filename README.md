@@ -11,7 +11,7 @@
 
 ## 🔴 Live Demo (Preprod)
 
-**[https://private-revenue-split.vercel.app](https://private-revenue-split.vercel.app)**
+`[DEPLOYING: Link to be updated upon Vercel import under nandini-jadhav1s-projects]`
 
 ---
 
@@ -19,9 +19,9 @@
 
 | Network  | Address                                                              |
 |----------|----------------------------------------------------------------------|
-| Preprod  | `02005a9c0897f1da76135dd6977be415f3cf374466986b24d77eb60cbe4eeef45a8e` |
+| Preprod  | `[PENDING DEPLOYMENT: Deploy via Lace Wallet on Preprod to obtain on-chain address]` |
 
-> Deployed on the **Midnight Preprod Network**. Use Lace Wallet (Preprod) to interact.
+> Connect Lace Wallet (Preprod) to deploy and interact.
 
 ---
 
