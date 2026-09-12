@@ -1,9 +1,15 @@
 # Byte-compiled / optimized / DLL files
 node_modules/
 dist/
+
+# Environment variables and secrets
 .env
-.env.local
-.env.production
+.env.*
+
+# Midnight deployment secrets
+.contract-address
+revenue-split-private-state/
+revenue-split-signing-keys/
 
 # Build artifacts
 *.js.map
