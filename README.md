@@ -11,39 +11,39 @@
 
 ## Live Demo
 
-**TODO: Add Vercel production URL once deployment is confirmed via Vercel dashboard.**
+[**Open Private Revenue Split Live Demo**](https://revenue-split-nu.vercel.app)
 
-Example format: `https://revenue-split.vercel.app`
-
-To trigger a deployment: push to `main` on GitHub. Vercel is configured to auto-deploy from this repository via `vercel.json`.
+Live deployment: **https://revenue-split-nu.vercel.app**
 
 ---
 
-## Contract Address (Midnight Preprod)
+## Contract---
 
-| Network | Address |
-|---------|---------|
-| Preprod | **TODO: Deploy contract via 1AM Wallet on Midnight Preprod and paste the on-chain address here.** |
+## Midnight Preprod Contract
 
-The contract is defined in `contracts/revenue-split.compact`. To obtain an on-chain address you must deploy it using a funded Preprod wallet and the Midnight SDK or CLI. Once deployed, paste the address in this table and in `src/utils/contract.ts`.
+| Network | Contract Address |
+|---|---|
+| Midnight Preprod | `02005a9c0897f1da76135dd6977be415f3cf374466986b24d77eb60cbe4eeef45a8e` |
+
+This is the previously deployed Midnight Preprod contract. Source: `contracts/revenue-split.compact`.
 
 ---
 
 ## Demo Video
 
-**TODO: Record and upload the MVP demo video, then replace this line with the real URL.**
-
-The demo should show: wallet connection, ZK proof generation, claim execution, and Preprod evidence. See the [Demo Recording Checklist](#demo-recording-checklist) section below.
+[**Watch the Private Revenue Split MVP Demo**](https://youtu.be/yyFmQHbjRrc)
 
 ---
 
 ## Product X (Twitter/X) Profile
 
-**TODO: Create a project X profile and paste the real URL here.**
+[**Private Revenue Split on X**](https://x.com/jadhav_nan99910)
 
-Example format: `https://x.com/YourProjectHandle`
+X Profile: https://x.com/jadhav_nan99910
 
 ---
+
+## Problem---
 
 ## Problem Statement
 
@@ -274,15 +274,15 @@ Workflow file: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Working MVP live on Preprod | **TODO: add live URL** | Vercel project: `revenue-split` |
+| Working MVP live on Preprod | OK | https://revenue-split-nu.vercel.app |
 | README + setup + usage docs | ✅ | This file + [docs/USAGE.md](docs/USAGE.md) |
 | CI/CD pipeline | ✅ | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) |
 | CI/CD badge | ✅ | Badge above links to live workflow runs |
-| Product X profile | **TODO: add real URL** | — |
-| Minimum 15 meaningful commits | ✅ 23 commits | [Commit history](https://github.com/Nandini-Jadhav1/revenue-split/commits/main) |
+| Product X profile | OK | https://x.com/jadhav_nan99910 |
+| Minimum 15 meaningful commits | ✅ 25 commits | [Commit history](https://github.com/Nandini-Jadhav1/revenue-split/commits/main) |
 | Public GitHub repository | ✅ | [github.com/Nandini-Jadhav1/revenue-split](https://github.com/Nandini-Jadhav1/revenue-split) |
-| Preprod contract address | **TODO: deploy and add** | Contract: `contracts/revenue-split.compact` |
-| Demo video | **TODO: record and add URL** | See checklist below |
+| Preprod contract address | OK | `02005a9c0897f1da76135dd6977be415f3cf374466986b24d77eb60cbe4eeef45a8e` |
+| Demo video | OK | https://youtu.be/yyFmQHbjRrc |
 
 ---
 

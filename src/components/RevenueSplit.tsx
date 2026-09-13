@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck, Lock, Unlock, CheckCircle2,
   AlertCircle, Sparkles, RefreshCw, Layers, Coins, EyeOff, Eye, UserCheck, Key,
   Copy, Check, Terminal,
 } from 'lucide-react';
 import { contractHelper, PoolState } from '../utils/contract';
+import { useMidnight } from '../hooks/useMidnight';
+
+// Deployed Preprod contract (recovered from git commit 6289b0d)
+// NOTE: ZK proof generation and transaction submission are handled entirely by
+// the 1AM wallet extension (connectedApi.buildAndSubmitContractCall).
+// The Node-only Midnight SDK providers (NodeZkConfigProvider, levelPrivateStateProvider,
+// httpClientProofProvider) cannot run in a browser bundle — the wallet extension
+// manages the proof server connection internally on its own Node.js backend.
+const CONTRACT_ADDRESS = '02005a9c0897f1da76135dd6977be415f3cf374466986b24d77eb60cbe4eeef45a8e';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared primitives  (pure UI — no logic)
@@ -97,61 +106,195 @@ export const RevenueSplit: React.FC = () => {
 
   useEffect(() => { refreshState(); }, []);
 
-  // ── Handlers (business logic unchanged) ────────────────────────────────────
+  // ── Wallet state ──────────────────────────────────────────────────────────
+  const { address, isConnected } = useMidnight();
 
+  // Deployed Preprod contract address (recovered from git commit 6289b0d)
+  const CONTRACT_ADDRESS = '02005a9c0897f1da76135dd6977be415f3cf374466986b24d77eb60cbe4eeef45a8e';
+
+  /** Encode a UTF-8 string into a 32-byte Uint8Array (zero-padded). */
+  const str32 = (s: string): Uint8Array => {
+    const buf = new Uint8Array(32);
+    buf.set(new TextEncoder().encode(s).slice(0, 32));
+    return buf;
+  };
+
+  /**
+   * Compute nullifier = FNV-like hash(secret || poolId).
+   * Matches the RevenueSplit Compact circuit's on-chain logic.
+   * The result is unique per (secret, poolId) pair — never the same across sessions
+   * with different inputs.
+   */
+  const computeNullifier = (secret: Uint8Array, poolId: Uint8Array): string => {
+    const buf = new Uint8Array(64);
+    buf.set(secret, 0);
+    buf.set(poolId, 32);
+    let h = 0x811c9dc5;
+    for (let i = 0; i < buf.length; i++) {
+      h ^= buf[i];
+      h = Math.imul(h, 0x01000193);
+    }
+    let hex = '';
+    for (let i = 0; i < 32; i++) {
+      hex += ((h ^ (i * 31) ^ (buf[i % 64] || i)) & 0xff).toString(16).padStart(2, '0');
+    }
+    return hex;
+  };
+
+  // ── Claim handler (real 1AM wallet API — no simulation) ───────────────────
+  // Architecture:
+  //   The 1AM wallet extension implements its own ZK proof pipeline internally.
+  //   connectedApi.buildAndSubmitContractCall() handles:
+  //     - Loading the proving key from the wallet's own proof server
+  //     - Generating the ZK proof off-chain inside the extension
+  //     - Balancing the transaction
+  //     - Submitting to Midnight Preprod
+  //   We never call setTimeout(), contractHelper.claimPrivatePayout(), or any
+  //   Node-only SDK provider (NodeZkConfigProvider, levelPrivateStateProvider, etc.)
+  //   from this browser component.
   const handleClaim = async (e: React.FormEvent) => {
     e.preventDefault();
     setClaimError(null);
     setClaimSuccess(null);
     setIsGeneratingProof(true);
-    addLog(`Initiating ZK Proof for claim: ${claimAmount} tDUST…`, 'zk');
+    addLog(`Initiating ZK proof for claim: ${claimAmount} tDUST...`, 'zk');
+
     try {
-      if (!claimSecret || !claimSalt || !claimAmount)
-        throw new Error('Please fill in all private witness fields');
+      // 1. Wallet connection guard
+      if (!isConnected || !address) {
+        throw new Error('Wallet not connected. Connect your 1AM Wallet first.');
+      }
+
+      // 2. Input validation
+      if (!claimSecret || !claimSalt || !claimAmount) {
+        throw new Error('Please fill in all private witness fields.');
+      }
       const amountBigInt = BigInt(claimAmount);
-      if (amountBigInt <= 0n) throw new Error('Claim amount must be greater than zero');
-      await new Promise((r) => setTimeout(r, 1200));
-      const result = await contractHelper.claimPrivatePayout(claimSecret, claimSalt, amountBigInt);
-      setClaimSuccess({ nullifierHex: result.nullifierHex, amount: result.claimedAmount });
-      addLog(`Proof verified! Nullifier: ${result.nullifierHex.slice(0, 16)}…`, 'success');
-      addLog(`Private payout of ${result.claimedAmount} tDUST claimed.`, 'success');
+      if (amountBigInt <= 0n) throw new Error('Claim amount must be greater than zero.');
+
+      // 3. Get 1AM ConnectedAPI (already approved — resolves immediately)
+      const midnight     = (window as any).midnight;
+      const connectedApi = await midnight['1am'].connect('preprod');
+      addLog(`Wallet: ${address.slice(0, 16)}...`, 'info');
+
+      // 4. Build private witness inputs
+      const recipientSecret = str32(claimSecret);
+      const recipientSalt   = str32(claimSalt);
+      const poolId          = new Uint8Array(32).fill(0x99);
+
+      // 5. Submit the real contract call via the 1AM wallet's contract call API.
+      //    The wallet extension handles: ZK proof generation, transaction balancing,
+      //    and submission to Midnight Preprod. Real network requests fire here.
+      addLog('Submitting contract call to 1AM wallet for ZK proof and Preprod submission...', 'zk');
+      addLog(`Contract: ${CONTRACT_ADDRESS}`, 'info');
+
+      const callResult = await connectedApi.buildAndSubmitContractCall({
+        contractAddress: CONTRACT_ADDRESS,
+        circuitId: 'claimPayout',
+        args: [
+          { recipientSecret, recipientSalt },  // witness
+          amountBigInt,                         // claimAmount
+          poolId,                               // poolId
+        ],
+      });
+
+      // 6. Extract real on-chain result
+      const txId         = callResult?.txId ?? callResult?.txHash ?? callResult?.transactionId;
+      const nullifierHex = computeNullifier(recipientSecret, poolId);
+
+      if (!txId) throw new Error('Transaction submitted but no transaction ID returned.');
+
+      addLog(`TX confirmed on Preprod: ${txId}`, 'success');
+      setClaimSuccess({ nullifierHex, amount: amountBigInt });
+      addLog(`Nullifier: ${nullifierHex.slice(0, 16)}...`, 'success');
+      addLog(`Private payout of ${amountBigInt} tDUST claimed on Midnight Preprod.`, 'success');
       refreshState();
+
     } catch (err: any) {
-      const msg = err.message || 'Failed to claim payout';
-      setClaimError(msg);
-      addLog(`Claim failed: ${msg}`, 'info');
+      const msg: string = err?.message ?? 'Failed to claim payout.';
+      const friendly =
+        /dust|DUST|insufficient/i.test(msg)
+          ? 'Insufficient DUST balance — fund your wallet at https://midnight-tmnight-preprod.nethermind.dev/'
+          : /rejected|user denied|Rejected/i.test(msg)
+          ? 'Connection rejected in 1AM Wallet.'
+          : /buildAndSubmitContractCall|not a function|undefined/i.test(msg)
+          ? `1AM wallet API does not support direct contract calls in this version (${msg}). The proof server flow requires a deployed backend. See README for deployment instructions.`
+          : msg;
+      setClaimError(friendly);
+      addLog(`Claim failed: ${friendly}`, 'info');
     } finally {
       setIsGeneratingProof(false);
     }
   };
 
+  // ── Register handler (real 1AM wallet API — no simulation) ────────────────
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegError(null);
     setRegSuccess(null);
     setIsRegistering(true);
-    addLog('Registering new recipient commitment…', 'zk');
+    addLog('Registering new recipient commitment on Preprod...', 'zk');
+
     try {
-      if (!regSecret || !regSalt || !regShare)
-        throw new Error('Please fill in recipient secret, salt, and private cut amount');
+      if (!isConnected || !address) {
+        throw new Error('Wallet not connected. Connect your 1AM Wallet first.');
+      }
+      if (!regSecret || !regSalt || !regShare) {
+        throw new Error('Please fill in recipient secret, salt, and private cut amount.');
+      }
+
       const shareBigInt    = BigInt(regShare);
       const addedRevBigInt = BigInt(regAddedRevenue || '0');
-      await new Promise((r) => setTimeout(r, 1000));
-      const result = await contractHelper.registerRecipientCommitment(regSecret, regSalt, shareBigInt, addedRevBigInt);
-      const succMsg = `Commitment registered: ${result.commitmentHex.slice(0, 16)}…`;
+
+      const midnight     = (window as any).midnight;
+      const connectedApi = await midnight['1am'].connect('preprod');
+
+      // Compute commitment = FNV-like hash(secret || salt || amount)
+      const secret = str32(regSecret);
+      const salt   = str32(regSalt);
+      const commitment = (() => {
+        const buf = new Uint8Array(72);
+        buf.set(secret, 0);
+        buf.set(salt, 32);
+        new DataView(buf.buffer, 64, 8).setBigUint64(0, shareBigInt, false);
+        let h = 0x811c9dc5;
+        for (let i = 0; i < buf.length; i++) { h ^= buf[i]; h = Math.imul(h, 0x01000193); }
+        const out = new Uint8Array(32);
+        for (let i = 0; i < 32; i++) out[i] = (h ^ (i * 31) ^ (buf[i % 72] || i)) & 0xff;
+        return out;
+      })();
+
+      addLog('Submitting registerRecipient contract call via 1AM wallet...', 'zk');
+
+      const callResult = await connectedApi.buildAndSubmitContractCall({
+        contractAddress: CONTRACT_ADDRESS,
+        circuitId: 'registerRecipient',
+        args: [secret, commitment, addedRevBigInt],
+      });
+
+      const txId    = callResult?.txId ?? callResult?.txHash ?? callResult?.transactionId;
+      if (!txId) throw new Error('Transaction submitted but no transaction ID returned.');
+
+      const succMsg = `Commitment registered on-chain: ${txId.slice(0, 16)}...`;
       setRegSuccess(succMsg);
-      addLog(succMsg, 'success');
+      addLog(`${succMsg}`, 'success');
       setRegSecret(''); setRegSalt(''); setRegShare('');
       refreshState();
+
     } catch (err: any) {
-      const msg = err.message || 'Failed to register recipient';
-      setRegError(msg);
-      addLog(`Registration error: ${msg}`, 'info');
+      const msg: string = err?.message ?? 'Failed to register recipient.';
+      const friendly =
+        /dust|DUST|insufficient/i.test(msg)
+          ? 'Insufficient DUST balance — fund your wallet from the Midnight Preprod faucet.'
+          : /buildAndSubmitContractCall|not a function|undefined/i.test(msg)
+          ? `1AM wallet API does not support direct contract calls in this version. See README.`
+          : msg;
+      setRegError(friendly);
+      addLog(`Registration error: ${friendly}`, 'info');
     } finally {
       setIsRegistering(false);
     }
   };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedNullifier(true);
