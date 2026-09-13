@@ -1,212 +1,128 @@
-#!/usr/bin/env tsx
 /**
- * Fetch real on-chain users from Midnight Preprod indexer for our deployed contract.
- * Queries contractAction for the Revenue Split contract and extracts unique wallet addresses
- * from unshielded transaction outputs.
+ * Fetch Preprod Users Script
  * 
- * If no transactions exist yet, reports zero users honestly — no fabrication.
+ * Queries the Midnight Preprod indexer to fetch wallet addresses that have
+ * interacted with the RevenueSplit contract.
+ * 
+ * Usage: npm run fetch-users
  */
-
-import https from 'https';
-import fs from 'fs';
-import path from 'path';
 
 const CONTRACT_ADDRESS = '02005a9c0897f1da76135dd6977be415f3cf374466986b24d77eb60cbe4eeef45a8e';
 const INDEXER_URL = 'https://indexer.preprod.midnight.network/api/v4/graphql';
 
-interface GraphQLResponse<T = any> {
-  data?: T;
+interface Transaction {
+  hash: string;
+  from?: string;
+  to?: string;
+  blockNumber: number;
+}
+
+interface IndexerResponse {
+  data?: {
+    transactions?: Transaction[];
+  };
   errors?: Array<{ message: string }>;
 }
 
-interface UnshieldedUtxo {
-  owner: string; // UnshieldedAddress is a scalar (HexEncoded or bech32 string)
-  tokenType: string;
-  value: string;
-  createdAtTransaction: {
-    hash: string;
-    block: {
-      height: number;
-      timestamp: number;
-    };
-  };
-}
-
-interface Transaction {
-  hash: string;
-  block: {
-    height: number;
-    timestamp: number;
-  };
-  unshieldedCreatedOutputs: UnshieldedUtxo[];
-}
-
-interface ContractAction {
-  address: string;
-  transaction: Transaction;
-}
-
-function gql<T = any>(query: string): Promise<GraphQLResponse<T>> {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({ query });
-    const url = new URL(INDEXER_URL);
-    
-    const options: https.RequestOptions = {
-      hostname: url.hostname,
-      path: url.pathname,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-      },
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => (data += chunk));
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error(`Failed to parse response: ${data.substring(0, 200)}`));
+/**
+ * Fetch transactions involving the contract from Midnight Preprod indexer
+ */
+async function fetchContractTransactions(): Promise<Set<string>> {
+  const query = `
+    query GetContractTransactions($contractAddress: String!) {
+      transactions(
+        filter: {
+          or: [
+            { to: { eq: $contractAddress } }
+            { from: { eq: $contractAddress } }
+          ]
         }
-      });
-    });
-
-    req.on('error', reject);
-    req.write(body);
-    req.end();
-  });
-}
-
-interface UserRecord {
-  walletAddress: string;
-  firstTxHash: string;
-  timestamp: string; // ISO 8601
-  blockHeight: number;
-}
-
-async function main() {
-  console.log(`Querying Preprod indexer for contract: ${CONTRACT_ADDRESS}\n`);
-
-  const response = await gql<{ contractAction: ContractAction | null }>(`{
-    contractAction(address: "${CONTRACT_ADDRESS}") {
-      address
-      transaction {
-        hash
-        block {
-          height
-          timestamp
-        }
-        unshieldedCreatedOutputs {
-          owner
-          tokenType
-          value
-          createdAtTransaction {
-            hash
-            block {
-              height
-              timestamp
-            }
-          }
+        orderBy: BLOCK_NUMBER_DESC
+      ) {
+        nodes {
+          hash
+          from
+          to
+          blockNumber
         }
       }
     }
-  }`);
+  `;
 
-  if (response.errors) {
-    console.error('GraphQL errors:', response.errors);
-    process.exit(1);
-  }
+  try {
+    const response = await fetch(INDEXER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        variables: {
+          contractAddress: CONTRACT_ADDRESS,
+        },
+      }),
+    });
 
-  if (!response.data?.contractAction) {
-    console.log('⚠️  Contract not found on Preprod, or no transactions exist yet.');
-    console.log('   Outputting zero users (no fabrication).\n');
-    
-    const emptyOutput: UserRecord[] = [];
-    
-    // Write empty JSON
-    fs.writeFileSync(
-      path.join(process.cwd(), 'data', 'preprod-users.json'),
-      JSON.stringify(emptyOutput, null, 2)
-    );
-
-    // Write empty markdown
-    const md = `# Preprod Users
-
-**Contract Address:** \`${CONTRACT_ADDRESS}\`  
-**Total Unique Users:** 0
-
-No on-chain transactions found yet. This will update as real users interact with the contract.
-
-| Wallet Address | First Transaction | Block Height | Timestamp |
-|----------------|-------------------|--------------|-----------|
-| _(none)_ | - | - | - |
-`;
-    fs.writeFileSync(
-      path.join(process.cwd(), 'docs', 'PREPROD_USERS.md'),
-      md
-    );
-
-    console.log('✅ Generated:');
-    console.log('   - data/preprod-users.json (0 users)');
-    console.log('   - docs/PREPROD_USERS.md (0 users)');
-    
-    return;
-  }
-
-  // Extract unique wallet addresses from unshielded outputs
-  const userMap = new Map<string, UserRecord>();
-  const tx = response.data.contractAction.transaction;
-
-  for (const output of tx.unshieldedCreatedOutputs) {
-    const wallet = output.owner; // Already a string (bech32 address)
-    const txInfo = output.createdAtTransaction;
-    
-    if (!userMap.has(wallet)) {
-      userMap.set(wallet, {
-        walletAddress: wallet,
-        firstTxHash: txInfo.hash,
-        timestamp: new Date(txInfo.block.timestamp).toISOString(),
-        blockHeight: txInfo.block.height,
-      });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+
+    const result: IndexerResponse = await response.json();
+
+    if (result.errors) {
+      console.error('GraphQL errors:', result.errors);
+      throw new Error('Failed to fetch transactions from indexer');
+    }
+
+    const transactions = result.data?.transactions || [];
+    const walletAddresses = new Set<string>();
+
+    // Extract unique wallet addresses from transactions
+    transactions.forEach((tx: any) => {
+      if (tx.from && tx.from !== CONTRACT_ADDRESS) {
+        walletAddresses.add(tx.from);
+      }
+      if (tx.to && tx.to !== CONTRACT_ADDRESS) {
+        walletAddresses.add(tx.to);
+      }
+    });
+
+    return walletAddresses;
+  } catch (error) {
+    console.error('Error fetching contract transactions:', error);
+    throw error;
   }
-
-  const users = Array.from(userMap.values()).sort(
-    (a, b) => a.blockHeight - b.blockHeight
-  );
-
-  console.log(`✅ Found ${users.length} unique user(s)\n`);
-
-  // Write JSON
-  fs.writeFileSync(
-    path.join(process.cwd(), 'data', 'preprod-users.json'),
-    JSON.stringify(users, null, 2)
-  );
-
-  // Write Markdown
-  const md = `# Preprod Users
-
-**Contract Address:** \`${CONTRACT_ADDRESS}\`  
-**Total Unique Users:** ${users.length}
-
-| Wallet Address | First Transaction | Block Height | Timestamp |
-|----------------|-------------------|--------------|-----------|
-${users.map(u => `| \`${u.walletAddress}\` | \`${u.firstTxHash}\` | ${u.blockHeight} | ${u.timestamp} |`).join('\n')}
-`;
-  fs.writeFileSync(
-    path.join(process.cwd(), 'docs', 'PREPROD_USERS.md'),
-    md
-  );
-
-  console.log('📄 Generated:');
-  console.log('   - data/preprod-users.json');
-  console.log('   - docs/PREPROD_USERS.md');
-  console.log(`\n🎉 ${users.length} real on-chain user(s) tracked.`);
 }
 
-main().catch((err) => {
-  console.error('❌ Error:', err.message);
-  process.exit(1);
-});
+/**
+ * Main execution
+ */
+async function main() {
+  console.log('🔍 Fetching Preprod user wallet addresses...');
+  console.log(`📝 Contract: ${CONTRACT_ADDRESS}`);
+  console.log(`🌐 Indexer: ${INDEXER_URL}\n`);
+
+  try {
+    const walletAddresses = await fetchContractTransactions();
+
+    console.log(`✅ Found ${walletAddresses.size} unique wallet addresses:\n`);
+
+    const sortedAddresses = Array.from(walletAddresses).sort();
+    sortedAddresses.forEach((address, index) => {
+      console.log(`${(index + 1).toString().padStart(3, ' ')}. ${address}`);
+    });
+
+    console.log(`\n📊 Total: ${walletAddresses.size} Preprod users`);
+
+    if (walletAddresses.size >= 70) {
+      console.log('🎉 Requirement met: 70+ Preprod users verified!');
+    } else {
+      console.log(`⚠️  Need ${70 - walletAddresses.size} more users to meet Level 6 requirement`);
+    }
+  } catch (error) {
+    console.error('❌ Failed to fetch user addresses');
+    process.exit(1);
+  }
+}
+
+main();
