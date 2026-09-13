@@ -26,7 +26,19 @@ The table below will be populated from actual user responses. See `data/feedback
 
 This section documents improvements implemented based on user feedback.
 
-_TODO: Update as feedback is collected and acted upon._
+### Implemented Improvements
+
+- **Feedback:** "Show Transaction Successful message."
+- **From:** Early tester feedback
+- **Action Taken:** Added prominent success notification toast that appears after successful claim/register transactions with clear messaging, transaction ID display, and auto-dismiss functionality
+- **Commit:** `65da26b`
+
+- **Feedback:** "Improve UI."
+- **From:** Early tester feedback
+- **Action Taken:** Enhanced button clarity with clearer labels ("Claim Private Payout", "Register Split Rule"), improved button styling with gradients and better focus states, enhanced demo credentials panel, increased form spacing for better visual hierarchy
+- **Commit:** `65da26b`
+
+---
 
 ### Example Entry Format
 
