@@ -1,12 +1,12 @@
 import React from 'react';
 import { Wallet, ShieldCheck, AlertCircle, LogOut, ExternalLink } from 'lucide-react';
-import { useMidnight } from '../hooks/useMidnight';
+import { useWallet } from '../contexts/WalletContext';
 
 export const WalletConnect: React.FC = () => {
   const {
     isConnected, isConnecting, address, network, error,
     isWalletInstalled, connect, disconnect, installUrl,
-  } = useMidnight();
+  } = useWallet();
 
   const truncateAddress = (addr: string | null) => {
     if (!addr) return '';

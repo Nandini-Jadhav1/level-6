@@ -5,7 +5,7 @@ import {
   Copy, Check, Terminal,
 } from 'lucide-react';
 import { contractHelper, PoolState } from '../utils/contract';
-import { useMidnight } from '../hooks/useMidnight';
+import { useWallet } from '../contexts/WalletContext';
 
 // Deployed Preprod contract (recovered from git commit 6289b0d)
 // NOTE: ZK proof generation and transaction submission are handled entirely by
@@ -107,7 +107,7 @@ export const RevenueSplit: React.FC = () => {
   useEffect(() => { refreshState(); }, []);
 
   // ── Wallet state ──────────────────────────────────────────────────────────
-  const { address, isConnected } = useMidnight();
+  const { address, isConnected, connectedApi } = useWallet();
 
   // Deployed Preprod contract address (recovered from git commit 6289b0d)
   const CONTRACT_ADDRESS = '02005a9c0897f1da76135dd6977be415f3cf374466986b24d77eb60cbe4eeef45a8e';
@@ -172,9 +172,9 @@ export const RevenueSplit: React.FC = () => {
       const amountBigInt = BigInt(claimAmount);
       if (amountBigInt <= 0n) throw new Error('Claim amount must be greater than zero.');
 
-      // 3. Get 1AM ConnectedAPI (already approved — resolves immediately)
-      const midnight     = (window as any).midnight;
-      const connectedApi = await midnight['1am'].connect('preprod');
+      // 3. Get 1AM ConnectedAPI (use shared context instance, fallback to reconnect if needed)
+      const midnight = (window as any).midnight;
+      const api = connectedApi || await midnight['1am'].connect('preprod');
       addLog(`Wallet: ${address.slice(0, 16)}...`, 'info');
 
       // 4. Build private witness inputs
@@ -188,7 +188,7 @@ export const RevenueSplit: React.FC = () => {
       addLog('Submitting contract call to 1AM wallet for ZK proof and Preprod submission...', 'zk');
       addLog(`Contract: ${CONTRACT_ADDRESS}`, 'info');
 
-      const callResult = await connectedApi.buildAndSubmitContractCall({
+      const callResult = await api.buildAndSubmitContractCall({
         contractAddress: CONTRACT_ADDRESS,
         circuitId: 'claimPayout',
         args: [
@@ -246,8 +246,8 @@ export const RevenueSplit: React.FC = () => {
       const shareBigInt    = BigInt(regShare);
       const addedRevBigInt = BigInt(regAddedRevenue || '0');
 
-      const midnight     = (window as any).midnight;
-      const connectedApi = await midnight['1am'].connect('preprod');
+      const midnight = (window as any).midnight;
+      const api = connectedApi || await midnight['1am'].connect('preprod');
 
       // Compute commitment = FNV-like hash(secret || salt || amount)
       const secret = str32(regSecret);
@@ -266,7 +266,7 @@ export const RevenueSplit: React.FC = () => {
 
       addLog('Submitting registerRecipient contract call via 1AM wallet...', 'zk');
 
-      const callResult = await connectedApi.buildAndSubmitContractCall({
+      const callResult = await api.buildAndSubmitContractCall({
         contractAddress: CONTRACT_ADDRESS,
         circuitId: 'registerRecipient',
         args: [secret, commitment, addedRevBigInt],
