@@ -37,3 +37,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
+
+# Debug/test scripts
+check-address.mjs
+test-bip39.mjs
