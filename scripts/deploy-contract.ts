@@ -6,8 +6,11 @@
  * - wallet-sdk 1.2.0
  * - FluentWalletBuilder/testkit-js pattern
  * 
- * SECURITY: Wallet seed must be provided via WALLET_SEED environment variable
- * Never commit or log the seed value
+ * SECURITY: Wallet seed must be provided via either:
+ *   - WALLET_SEED environment variable (64-character hex string)
+ *   - WALLET_RECOVERY_PHRASE environment variable (BIP39 mnemonic, 12 or 24 words)
+ * 
+ * Never commit or log the seed or recovery phrase value
  */
 
 import { createInterface } from 'node:readline/promises';
@@ -19,7 +22,6 @@ import WebSocket from 'ws';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { 
   FluentWalletBuilder, 
-  RemoteTestEnvironment,
   type EnvironmentConfiguration 
 } from '@midnight-ntwrk/testkit-js';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk/facade';
@@ -45,18 +47,8 @@ const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 const projectRoot = path.resolve(currentDir, '..');
 
 // Preprod environment configuration
-class PreprodEnvironment extends RemoteTestEnvironment {
-  constructor(logger: Logger) {
-    super(logger);
-  }
-
-  private getProofServerUrl(): string {
-    const container = this.proofServerContainer as { getUrl(): string } | undefined;
-    if (!container) {
-      throw new Error('Proof server container is not available.');
-    }
-    return container.getUrl();
-  }
+class PreprodEnvironment {
+  constructor(private logger: Logger) {}
 
   getEnvironmentConfiguration(): EnvironmentConfiguration {
     return {
@@ -67,8 +59,17 @@ class PreprodEnvironment extends RemoteTestEnvironment {
       node: 'https://rpc.preprod.midnight.network',
       nodeWS: 'wss://rpc.preprod.midnight.network',
       faucet: 'https://midnight-tmnight-preprod.nethermind.dev/',
-      proofServer: this.getProofServerUrl(),
+      proofServer: 'http://localhost:6300',
     };
+  }
+
+  async start(): Promise<EnvironmentConfiguration> {
+    this.logger.info('Using existing proof server at http://localhost:6300');
+    return this.getEnvironmentConfiguration();
+  }
+
+  async shutdown(): Promise<void> {
+    this.logger.info('Deployment complete. Proof server left running.');
   }
 }
 
@@ -132,8 +133,18 @@ class MidnightWalletProvider implements MidnightProvider, WalletProvider {
     
     const { wallet, seeds, keystore } = buildResult as any;
 
-    const shieldedAddress = wallet.shielded.address();
-    logger.info(`Wallet address: ${shieldedAddress.coinPublicKeyString()}`);
+    // Log wallet address (handle async if needed)
+    try {
+      const shieldedAddressResult = wallet.shielded.address();
+      if (shieldedAddressResult && typeof shieldedAddressResult.then === 'function') {
+        const addr = await shieldedAddressResult;
+        logger.info(`Wallet shielded address: ${addr?.coinPublicKeyString?.() || addr}`);
+      } else if (shieldedAddressResult) {
+        logger.info(`Wallet shielded address: ${shieldedAddressResult.coinPublicKeyString()}`);
+      }
+    } catch (e) {
+      logger.debug('Could not log shielded address');
+    }
 
     return new MidnightWalletProvider(
       logger,
@@ -146,19 +157,19 @@ class MidnightWalletProvider implements MidnightProvider, WalletProvider {
   }
 }
 
-// Wait for unshielded funds
+// Wait for unshielded funds (with 90 second timeout)
 async function waitForUnshieldedFunds(
   logger: pino.Logger,
   wallet: WalletFacade,
   env: EnvironmentConfiguration
 ): Promise<any> {
-  const unshieldedAddress = wallet.unshielded.getAddress();
-  logger.info(`Unshielded address: ${unshieldedAddress}`);
-  logger.info(`Fund your wallet with tNIGHT from: ${env.faucet}`);
-  logger.info('Waiting for funds...');
+  logger.info('Checking unshielded balance...');
+  logger.info(`If wallet has no funds, get tNIGHT from: ${env.faucet}`);
+  logger.info('Waiting for funds (90 second timeout)...');
 
   const unshieldedState = await rx.firstValueFrom(
     wallet.state().pipe(
+      rx.timeout(90000), // 90 second timeout
       rx.filter((s) => {
         const balance = s.unshielded.balances[unshieldedToken().raw];
         return balance !== undefined && balance > 0n;
@@ -255,13 +266,42 @@ async function deployRevenueSplitContract() {
     logger.info('Network: Preprod');
     logger.info('Proof Server: http://localhost:6300 (must be running)');
 
-    // Get wallet seed from environment variable
+    // Get wallet seed from environment variables
+    // Priority: WALLET_RECOVERY_PHRASE (BIP39 mnemonic) -> WALLET_SEED (hex)
+    const recoveryPhrase = process.env.WALLET_RECOVERY_PHRASE;
     let seed = process.env.WALLET_SEED;
 
-    if (!seed) {
-      logger.warn('WALLET_SEED environment variable not set');
+    if (recoveryPhrase) {
+      logger.info('Using WALLET_RECOVERY_PHRASE (BIP39 mnemonic)');
+      
+      // Validate phrase format
+      const words = recoveryPhrase.trim().split(/\s+/);
+      if (words.length !== 12 && words.length !== 24) {
+        throw new Error(`Invalid BIP39 recovery phrase: must be 12 or 24 words (got ${words.length})`);
+      }
+      
+      // Derive seed from BIP39 mnemonic
+      // BIP39 produces 64 bytes, but Midnight wallet SDK expects 32 bytes (64 hex chars)
+      const { mnemonicToSeedSync } = await import('@scure/bip39');
+      const seedBytes = mnemonicToSeedSync(recoveryPhrase, '');
+      const fullSeedHex = Buffer.from(seedBytes).toString('hex');
+      seed = fullSeedHex.substring(0, 64);
+      
+      if (!seed || seed.length !== 64) {
+        throw new Error('Failed to derive valid 64-character seed from recovery phrase');
+      }
+      
+      logger.info('Successfully derived seed from recovery phrase');
+    } else if (seed) {
+      logger.info('Using WALLET_SEED (hex)');
+      
+      if (!seed || seed.length !== 64) {
+        throw new Error('Invalid wallet seed (must be 64-character hex string)');
+      }
+    } else {
+      logger.warn('Neither WALLET_RECOVERY_PHRASE nor WALLET_SEED environment variables are set');
       const choice = await rli.question(
-        '\nWallet options:\n  1. Generate new wallet\n  2. Enter existing seed\n  3. Exit\nChoice: '
+        '\nWallet options:\n  1. Generate new wallet\n  2. Enter existing seed (64-character hex)\n  3. Enter recovery phrase (12/24 word BIP39 mnemonic)\n  4. Exit\nChoice: '
       );
 
       if (choice === '1') {
@@ -271,14 +311,30 @@ async function deployRevenueSplitContract() {
         logger.info(`WALLET_SEED=${seed}`);
       } else if (choice === '2') {
         seed = await rli.question('Enter your 64-character hex seed: ');
+        if (!seed || seed.length !== 64) {
+          throw new Error('Invalid wallet seed (must be 64-character hex string)');
+        }
+      } else if (choice === '3') {
+        const phrase = await rli.question('Enter your BIP39 recovery phrase (12 or 24 words): ');
+        const words = phrase.trim().split(/\s+/);
+        if (words.length !== 12 && words.length !== 24) {
+          throw new Error(`Invalid BIP39 recovery phrase: must be 12 or 24 words (got ${words.length})`);
+        }
+        
+        const { mnemonicToSeedSync } = await import('@scure/bip39');
+        const seedBytes = mnemonicToSeedSync(phrase, '');
+        const fullSeedHex = Buffer.from(seedBytes).toString('hex');
+        seed = fullSeedHex.substring(0, 64);
+        
+        if (!seed || seed.length !== 64) {
+          throw new Error('Failed to derive valid 64-character seed from recovery phrase');
+        }
+        
+        logger.info('Successfully derived seed from recovery phrase');
       } else {
         logger.info('Exiting...');
         return;
       }
-    }
-
-    if (!seed || seed.length !== 64) {
-      throw new Error('Invalid wallet seed (must be 64-character hex string)');
     }
 
     // Initialize network
