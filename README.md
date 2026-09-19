@@ -42,7 +42,7 @@ Google Feedback Form
 
 Google Feedback Responses
 
-https://docs.google.com/spreadsheets/d/1vW6SEV52-JAy9A4Y3DYNu8F8dijMZnh64fwbAbs9s/edit?gid=2082627229
+https://docs.google.com/spreadsheets/d/1vW6SEV52-JAy9A4Y3DYNu8Fz8dijMZnh64fwbAbsb9s/edit?resourcekey=&gid=2082627229#gid=2082627229
 
 Feedback Documentation
 
