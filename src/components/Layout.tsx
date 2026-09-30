@@ -1,106 +1,62 @@
 import React from 'react';
 import { WalletConnect } from './WalletConnect';
-import { Shield, ExternalLink, Activity } from 'lucide-react';
+import { Activity, ArrowUpRight, ExternalLink } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-/**
- * Layout centering strategy
- * ─────────────────────────
- * Every full-width zone (header, main, footer) contains ONE inner div
- * with className="app-cx".
- *
- * .app-cx is defined in index.css as plain CSS — NOT via Tailwind:
- *
- *   .app-cx {
- *     width: 100%;
- *     max-width: 1280px;
- *     margin-left: auto;
- *     margin-right: auto;
- *     padding-left: 40px;
- *     padding-right: 40px;
- *     box-sizing: border-box;
- *   }
- *
- * Using a plain CSS class (not a Tailwind utility) guarantees the rule
- * is compiled into the stylesheet unconditionally — no purging, no
- * arbitrary-value generation issues.
- *
- * At 1600px viewport:  160px gap | 1280px content | 160px gap
- * At 1440px viewport:   80px gap | 1280px content |  80px gap
- * At 1280px viewport:   padding only (40px each side)
- * At ≤1024px:           24px each side
- * At ≤640px:            16px each side
- */
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen flex flex-col selection:bg-indigo-500/30 selection:text-white">
+    <div className="min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-white">
+      <header className="app-header sticky top-0 z-50 w-full">
+        <div className="app-cx app-header-inner">
+          <a className="brand-lockup" href="#top" aria-label="Splitline home">
+            <span className="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 40 40" fill="none">
+                <path d="M11 12.5h11.5a6 6 0 0 1 0 12H17" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+                <path d="M29 27.5H17.5a6 6 0 0 1 0-12H23" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+                <circle cx="11" cy="12.5" r="2.5" fill="currentColor" />
+                <circle cx="29" cy="27.5" r="2.5" fill="currentColor" />
+              </svg>
+            </span>
+            <span className="brand-copy">
+              <span className="brand-name">Splitline</span>
+              <span className="brand-caption">PRIVATE REVENUE</span>
+            </span>
+          </a>
 
-      {/* ── Header: full-width bg, app-cx inner ──── */}
-      <header className="sticky top-0 z-50 w-full border-b border-white/[0.05] bg-[#07091a]/92 backdrop-blur-xl">
-        <div className="app-cx" style={{ height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-
-          {/* Branding */}
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-indigo-500/12 border border-indigo-500/25
-                            flex items-center justify-center shrink-0">
-              <Shield className="w-4 h-4 text-indigo-400" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5">
-                <span className="font-semibold text-[15px] text-slate-100 tracking-tight">
-                  Private Revenue Split
-                </span>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md
-                                 text-[10px] font-mono font-medium bg-indigo-500/10
-                                 text-indigo-300 border border-indigo-500/20 shrink-0">
-                  Preprod
-                </span>
-              </div>
-              <div className="hidden sm:flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500">
-                <span>Midnight Network</span>
-                <span className="text-slate-700">·</span>
-                <span className="flex items-center gap-1 text-emerald-500/70">
-                  <Activity className="w-2.5 h-2.5" />
-                  ZK Active
-                </span>
-              </div>
-            </div>
+          <div className="header-network" aria-label="Midnight Preprod network status">
+            <span className="network-pulse" />
+            <span className="header-network-name">Midnight</span>
+            <span className="network-divider" />
+            <span className="header-network-env">Preprod</span>
           </div>
 
-          {/* Wallet */}
           <WalletConnect />
         </div>
       </header>
 
-      {/* ── Main: full-width, app-cx inner ─────────── */}
       <main className="w-full flex-1">
-        <div className="app-cx" style={{ paddingTop: 48, paddingBottom: 48 }}>
-          <div className="space-y-10">
-            {children}
-          </div>
+        <div id="top" className="app-cx app-main">
+          {children}
         </div>
       </main>
 
-      {/* ── Footer: full-width border, app-cx inner ─ */}
-      <footer className="w-full border-t border-white/[0.04] mt-16">
-        <div className="app-cx" style={{ paddingTop: 32, paddingBottom: 32, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <span className="text-[13px] text-slate-600">
-            Built on Midnight Network · Compact ZK Protocol · Preprod
+      <footer className="app-footer w-full">
+        <div className="app-cx app-footer-inner">
+          <span className="footer-note">
+            <Activity className="w-3.5 h-3.5" />
+            Confidential by design. Verified on Midnight.
           </span>
-          <div className="flex items-center gap-6 text-[13px] text-slate-600">
-            <a href="https://midnight.network" target="_blank" rel="noreferrer"
-               className="hover:text-slate-300 transition-colors flex items-center gap-1.5">
-              Midnight Network <ExternalLink className="w-3 h-3" />
+          <div className="footer-links">
+            <a href="https://midnight.network" target="_blank" rel="noreferrer">
+              Midnight <ArrowUpRight className="w-3 h-3" />
             </a>
-            <a href="https://docs.midnight.network" target="_blank" rel="noreferrer"
-               className="hover:text-slate-300 transition-colors flex items-center gap-1.5">
-              Docs <ExternalLink className="w-3 h-3" />
+            <a href="https://docs.midnight.network" target="_blank" rel="noreferrer">
+              Documentation <ExternalLink className="w-3 h-3" />
             </a>
-            <a href="https://1am.xyz" target="_blank" rel="noreferrer"
-               className="hover:text-slate-300 transition-colors flex items-center gap-1.5">
+            <a href="https://1am.xyz" target="_blank" rel="noreferrer">
               1AM Wallet <ExternalLink className="w-3 h-3" />
             </a>
           </div>

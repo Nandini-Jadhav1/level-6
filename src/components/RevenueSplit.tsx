@@ -318,55 +318,52 @@ export const RevenueSplit: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           Hero banner
       ══════════════════════════════════════════════════════════════════════ */}
-      <div className="relative overflow-hidden rounded-2xl border border-indigo-500/15
+      <div className="rs-hero relative overflow-hidden rounded-2xl border border-indigo-500/15
                       bg-gradient-to-br from-indigo-950/40 via-[#09102a]/70 to-[#07091a]/90
                       px-8 sm:px-10 py-10 sm:py-12">
-        {/* Decorative orb */}
-        <div className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full
-                        bg-indigo-600/6 blur-[80px]" />
-
         <div className="relative flex flex-col lg:flex-row items-start lg:items-center
                         justify-between gap-8">
-          {/* Left — branding & description */}
-          <div className="space-y-5 flex-1 min-w-0 max-w-2xl">
+          <div className="rs-hero-copy space-y-5 flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               <Badge variant="indigo">
-                <ShieldCheck className="w-3.5 h-3.5" /> Midnight Compact Protocol
+                <ShieldCheck className="w-3.5 h-3.5" /> MIDNIGHT COMPACT
               </Badge>
               <Badge variant="emerald">
-                <CheckCircle2 className="w-3.5 h-3.5" /> ZK Auditable
+                <CheckCircle2 className="w-3.5 h-3.5" /> ZERO-KNOWLEDGE VERIFIED
               </Badge>
             </div>
 
             <div className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white leading-tight">
-                Confidential Revenue<br className="hidden sm:block" /> Distribution
+              <p className="rs-hero-kicker">PRIVATE PAYOUTS, MADE VERIFIABLE</p>
+              <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
+                Revenue, distributed<br className="hidden sm:block" /> privately.
               </h1>
               <p className="text-[15px] text-slate-400 leading-relaxed">
-                Distribute revenue among recipients with complete confidentiality.
-                Zero-knowledge proofs verify each share commitment without exposing
-                individual payout amounts on the public ledger.
+                Pay every contributor their share without publishing what anyone earned.
+                Each claim is verified on-chain while individual amounts stay private.
               </p>
             </div>
           </div>
 
-          {/* Right — contract status */}
           <div className="shrink-0 w-full lg:w-auto">
-            <div className="rounded-xl border border-white/[0.06] bg-[#07091a]/70
-                            px-5 py-4 space-y-3 min-w-[210px]">
-              <p className="text-[11px] font-mono font-medium text-slate-600 uppercase tracking-widest mb-1">
-                Contract Status
+            <div className="rs-contract-panel rounded-xl border border-white/[0.06] bg-[#07091a]/70
+                            px-5 py-4 space-y-3">
+              <p className="text-[10px] font-mono font-medium text-slate-600 uppercase tracking-widest mb-1">
+                NETWORK STATUS
               </p>
               {[
-                { label: 'State',    value: 'Active',           color: 'text-emerald-400' },
-                { label: 'Compiler', value: 'Compact v0.16',    color: 'text-indigo-300'  },
-                { label: 'Proofs',   value: 'Off-Chain Witness', color: 'text-purple-300'  },
+                { label: 'Contract', value: 'Live', color: 'text-emerald-400' },
+                { label: 'Runtime', value: 'Compact 0.16', color: 'text-indigo-300' },
+                { label: 'Proof mode', value: 'Private witness', color: 'text-purple-300' },
               ].map((row) => (
                 <div key={row.label} className="flex items-center justify-between gap-8">
                   <span className="text-xs text-slate-500 font-mono">{row.label}</span>
                   <span className={`text-xs font-semibold font-mono ${row.color}`}>{row.value}</span>
                 </div>
               ))}
+              <div className="flex items-center gap-2 border-t border-white/[0.06] pt-3 text-[10px] text-slate-500 font-mono">
+                <span className="network-pulse" /> MIDNIGHT PREPROD
+              </div>
             </div>
           </div>
         </div>
